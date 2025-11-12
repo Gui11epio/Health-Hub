@@ -8,10 +8,10 @@ namespace Health_Hub.Application.DTOs.Response
 {
     public class UsuarioResponse
     {
-        public Guid Id { get; set; }
+        public int Id { get; set; }
         public string EmailCorporativo { get; set; }
-        public string NomeCompleto { get; set; }
+        public string Nome { get; set; }
         public string TipoUsuario { get; set; }
-        public DateTime CriadoEm { get; set; }
+        
     }
 }

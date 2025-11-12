@@ -15,10 +15,10 @@ namespace MottuFind_C_.Infrastructure.Context
         {
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
 
-            
-            
 
-            optionsBuilder.UseOracle("User Id=rm554894;Password=020306;Data Source=oracle.fiap.com.br/ORCL");
+            var connectionString = Environment.GetEnvironmentVariable("DEFAULT_CONNECTION");
+
+            optionsBuilder.UseOracle(connectionString);
 
             return new AppDbContext(optionsBuilder.Options);
         }

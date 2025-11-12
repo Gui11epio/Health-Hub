@@ -3,41 +3,77 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AutoMapper;
+using Health_Hub.Application.DTOs.Request;
+using Health_Hub.Application.DTOs.Response;
 using Health_Hub.Domain.Entities;
 using Health_Hub.Domain.IRepositories;
-using MH.Application.Interfaces;
+using Sprint1_C_.Application.DTOs.Response;
 
 namespace Health_Hub.Application.Services
 {
-    public class UsuarioService : IUsuarioService
+    public class UsuarioService
     {
         private readonly IUsuarioRepository _repo;
-        public UsuarioService(IUsuarioRepository repo) { _repo = repo; }
-
-        public async Task<Usuario> CreateAsync(Usuario usuario, string senha)
-        {
-            usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(senha);
-            await _repo.AddAsync(usuario);
-            return usuario;
+        private readonly IMapper _mapper;
+        public UsuarioService(IUsuarioRepository repo, IMapper mapper) { 
+            _repo = repo;
+            _mapper = mapper;
         }
 
-        public async Task DeleteAsync(Guid id)
+
+        public async Task<List<UsuarioResponse>> ObterTodos()
         {
-            var u = await _repo.GetByIdAsync(id);
-            if (u != null) await _repo.DeleteAsync(u);
+            var usuarios = await _repo.GetAllAsync();
+            return _mapper.Map<List<UsuarioResponse>>(usuarios);
         }
 
-        public async Task<Usuario> GetByEmailAsync(string email) => await _repo.GetByEmailAsync(email);
-        public async Task<Usuario> GetByIdAsync(Guid id) => await _repo.GetByIdAsync(id);
-        public async Task<IEnumerable<Usuario>> GetAllAsync(int page, int pageSize) => await _repo.GetAllAsync(page, pageSize);
-        public async Task UpdateAsync(Usuario usuario) => await _repo.UpdateAsync(usuario);
-
-        public async Task<bool> ValidateCredentialsAsync(string email, string senha)
+        public async Task<UsuarioResponse?> ObterPorId(int id)
         {
-            var u = await _repo.GetByEmailAsync(email);
-            if (u == null) return false;
-            return BCrypt.Net.BCrypt.Verify(senha, u.SenhaHash);
+            var usuario = await _repo.GetByIdAsync(id);
+            return usuario == null ? null : _mapper.Map<UsuarioResponse>(usuario);
         }
+
+        public async Task<UsuarioResponse?> GetByEmailAsync(string email)
+        {
+            var usuario = await _repo.GetByEmailAsync(email);
+            return usuario == null ? null : _mapper.Map<UsuarioResponse>(usuario);
+        }
+
+        public async Task<PagedResult<UsuarioResponse>> ObterPorPagina(int pageNumber, int pageSize)
+        {
+            var (itens, total) = await _repo.GetAllByPageAsync(pageNumber, pageSize);
+
+            return new PagedResult<UsuarioResponse>
+            {
+                Numeropag = pageNumber,
+                Tamnhopag = pageSize,
+                Total = total,
+                Itens = _mapper.Map<List<UsuarioResponse>>(itens)
+            };
+        }
+
+        public async Task<UsuarioResponse> Criar(UsuarioRequest request)
+        {
+            var novoUsuario = _mapper.Map<Usuario>(request);
+            await _repo.AddAsync(novoUsuario);
+            return _mapper.Map<UsuarioResponse>(novoUsuario);
+        }
+
+        public async Task<bool> Atualizar(int id, UsuarioRequest request)
+        {
+            var usuario = await _repo.GetByIdAsync(id);
+            if (usuario == null) return false;
+
+            _mapper.Map(request, usuario);
+            return await _repo.UpdateAsync(usuario);
+        }
+
+        public async Task<bool> Remover(int id)
+        {
+            return await _repo.DeleteAsync(id);
+        }
+
     }
 }
 

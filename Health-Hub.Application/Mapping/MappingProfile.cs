@@ -14,18 +14,12 @@ namespace Health_Hub.Application.Mapping
     {
         public MappingProfile()
         {
-            
-            CreateMap<UsuarioRequest, Usuario>()
-                .ForMember(dest => dest.SenhaHash, opt => opt.Ignore());
+
+            CreateMap<UsuarioRequest, Usuario>();
             CreateMap<Usuario, UsuarioResponse>();
 
            
-            CreateMap<QuestionarioRequest, Questionario>();
-            CreateMap<Questionario, QuestionarioResponse>();
-
             
-            CreateMap<RelatorioRequest, Relatorio>();
-            CreateMap<Relatorio, RelatorioResponse>();
         }
     }
 }

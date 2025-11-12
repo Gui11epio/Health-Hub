@@ -12,7 +12,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MottuFind_C_.Infrastructure.HealthChecks;
 using Asp.Versioning;
 using Microsoft.Extensions.DependencyInjection;
-using MH.Application.Interfaces;
 
 namespace Health_Hub
 {
@@ -48,17 +47,18 @@ namespace Health_Hub
             });
 
 
-            builder.Services.AddDbContext<AppDbContext>(opts =>
-                opts.UseOracle(builder.Configuration.GetConnectionString("DefaultConnection")));
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            {
+                var connectionString = Environment.GetEnvironmentVariable("DEFAULT_CONNECTION");
+                if (string.IsNullOrWhiteSpace(connectionString))
+                    throw new Exception("A variável de ambiente DEFAULT_CONNECTION não está definida.");
+
+                options.UseOracle(connectionString);
+            });
 
 
-            builder.Services.AddScoped<IQuestionarioRepository, QuestionarioRepository>();
-            builder.Services.AddScoped<IQuestionarioService, QuestionarioService>();
-
-            builder.Services.AddScoped<IRelatorioRepository, RelatorioRepository>();
-            
             builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
-            builder.Services.AddScoped<IUsuarioService,UsuarioService>();
+            builder.Services.AddScoped<UsuarioService>();
 
             builder.Services.AddAuthorization();
 

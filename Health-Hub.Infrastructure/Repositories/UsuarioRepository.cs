@@ -13,44 +13,59 @@ namespace Health_Hub.Infrastructure.Repositories
     public class UsuarioRepository : IUsuarioRepository
     {
 
-        private readonly AppDbContext _ctx;
-        public UsuarioRepository(AppDbContext ctx) => _ctx = ctx;
-
-        public async Task AddAsync(Usuario usuario)
+        private readonly AppDbContext _context;
+        public UsuarioRepository(AppDbContext context)
         {
-            _ctx.Usuarios.Add(usuario);
-            await _ctx.SaveChangesAsync();
+            _context = context;
+        } 
+            
+        public async Task<List<Usuario>> GetAllAsync()
+        {
+            return await _context.Usuarios.ToListAsync();
         }
 
-        public async Task<int> CountAsync() => await _ctx.Usuarios.CountAsync();
-        
-
-        public async Task DeleteAsync(Usuario usuario)
+        public async Task<(List<Usuario> Itens, int Total)> GetAllByPageAsync(int pageNumber, int pageSize)
         {
-            _ctx.Usuarios.Remove(usuario);
-            await _ctx.SaveChangesAsync();
+            var query = _context.Usuarios.AsQueryable();
+            var total = await query.CountAsync();
+            var itens = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            return (itens, total);
         }
 
-        public async Task<IEnumerable<Usuario>> GetAllAsync(int page, int pageSize)
+        public async Task<Usuario?> GetByEmailAsync(string email)
         {
-            return await _ctx.Usuarios.OrderBy(u => u.Nome)
-                .Skip((page-1)*pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            return await _context.Usuarios.FirstOrDefaultAsync(u => u.EmailCorporativo == email);
         }
 
-        public async Task<Usuario> GetByEmailAsync(string email)
-            => await _ctx.Usuarios.FirstOrDefaultAsync(u => u.EmailCorporativo == email);
-
-
-        public async Task<Usuario> GetByIdAsync(Guid id)
-            => await _ctx.Usuarios.FindAsync(id);
-        
-
-        public async Task UpdateAsync(Usuario usuario)
+        public async Task<Usuario?> GetByIdAsync(int id)
         {
-            _ctx.Usuarios.Update(usuario);
-            await _ctx.SaveChangesAsync();
+            return await _context.Usuarios.FindAsync(id);
+        }
+
+
+        public async Task<Usuario> AddAsync(Usuario usuario)
+        {
+            _context.Usuarios.Add(usuario);
+            await _context.SaveChangesAsync();
+            return usuario;
+
+        }
+
+        public async Task<bool> UpdateAsync(Usuario usuario)
+        {
+            _context.Usuarios.Update(usuario);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null)
+                return false;
+            _context.Usuarios.Remove(usuario);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

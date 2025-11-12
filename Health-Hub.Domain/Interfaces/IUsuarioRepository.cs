@@ -9,12 +9,12 @@ namespace Health_Hub.Domain.IRepositories
 {
     public interface IUsuarioRepository
     {
-        Task<Usuario> GetByIdAsync(Guid id);
-        Task<Usuario> GetByEmailAsync(string email);
-        Task<IEnumerable<Usuario>> GetAllAsync(int page, int pageSize);
-        Task<int> CountAsync();
-        Task AddAsync(Usuario usuario);
-        Task UpdateAsync(Usuario usuario);
-        Task DeleteAsync(Usuario usuario);
+        Task<List<Usuario>> GetAllAsync();
+        Task<Usuario?> GetByIdAsync(int id);
+        Task<Usuario?> GetByEmailAsync(string email);
+        Task<(List<Usuario> Itens, int Total)> GetAllByPageAsync(int pageNumber, int pageSize);
+        Task<Usuario> AddAsync(Usuario usuario);
+        Task<bool> UpdateAsync(Usuario usuario);
+        Task<bool> DeleteAsync(int id);
     }
 }
