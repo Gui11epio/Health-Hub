@@ -1,139 +1,113 @@
-﻿using AutoMapper;
-using Health_Hub.Application.DTOs.Request;
-using Health_Hub.Application.DTOs.Response;
+using Health_Hub.Application.Mapping;
 using Health_Hub.Application.Services;
-using Health_Hub.Domain.Entities;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Sprint1_C_.Application.DTOs.Response;
-using Swashbuckle.AspNetCore.Annotations;
+using Health_Hub.Domain.IRepositories;
+using System.Text.Json.Serialization;
+using Health_Hub.Extensions;
+using Health_Hub.Infrastructure.Context;
+using Health_Hub.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using MottuFind_C_.Infrastructure.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Health_Hub.Controllers
+namespace Health_Hub
 {
-    [ApiController]
-    [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/usuarios")]
-    public class UsuarioController : ControllerBase
+    public class Program
     {
-        private readonly UsuarioService _svc;
-        
-
-        public UsuarioController(UsuarioService svc)
+        public static void Main(string[] args)
         {
-            _svc = svc;
-            
-        }
+            var builder = WebApplication.CreateBuilder(args);
 
-        [HttpGet("{id}")]
-        [ProducesResponseType(typeof(UsuarioResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [SwaggerOperation(
-            Summary = "Obtém um usuário por ID",
-            Description = "Retorna os detalhes de um usuário específico."
-        )]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var usuario = await _svc.ObterPorId(id);
-            if (usuario == null) return NotFound();
-            return Ok(usuario);
-        }
+            builder.Services.AddControllers();
 
-        [HttpGet("email/{email}")]
-        [ProducesResponseType(typeof(UsuarioResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [SwaggerOperation(
-            Summary = "Obtém um usuário por email",
-            Description = "Retorna os detalhes de um usuário específico pelo email."
-        )]
-        public async Task<IActionResult> GetByEmail(string email)
-        {
-            var usuario = await _svc.GetByEmailAsync(email);
-            if (usuario == null) return NotFound();
-            return Ok(usuario);
-        }
-
-        [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<UsuarioResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [SwaggerOperation(
-            Summary = "Obtém todos os usuários",
-            Description = "Retorna uma lista de todos os usuários cadastrados."
-        )]
-        public async Task<IActionResult> GetAll()
-        {
-            var usuarios = await _svc.ObterTodos();
-            if (usuarios == null || !usuarios.Any()) return NoContent();
-            return Ok(usuarios);
-        }
-
-        [HttpGet("pagina")]
-        [ProducesResponseType(typeof(PagedResult<UsuarioResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [SwaggerOperation(
-            Summary = "Obtém usuários paginados",
-            Description = "Retorna uma lista paginada de usuários."
-        )]
-        public async Task<ActionResult<PagedResult<UsuarioResponse>>> GetPaged(int numeroPag = 1, int tamanhoPag = 10)
-        {
-            var result = await _svc.ObterPorPagina(numeroPag, tamanhoPag);
-            return Ok(result);
-        }
-
-
-        [HttpPost]
-        [ProducesResponseType(typeof(UsuarioResponse), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [SwaggerOperation(
-            Summary = "Cria um novo usuário",
-            Description = "Adiciona um novo usuário ao sistema."
-        )]
-        public async Task<IActionResult> Create([FromBody] UsuarioRequest dto)
-        {
-            if (!ModelState.IsValid)
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(c =>
             {
-                return BadRequest(ModelState);
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                {
+                    Title = "Health-Hub.API",
+                    Version = "v1",
+                    Description = "Documentação da API."
+                });
+                c.EnableAnnotations();
+            });
+
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            {
+                var connectionString = Environment.GetEnvironmentVariable("DEFAULT_CONNECTION");
+                if (string.IsNullOrWhiteSpace(connectionString))
+                    throw new Exception("A variável de ambiente DEFAULT_CONNECTION não está definida.");
+
+                options.UseOracle(connectionString);
+            });
+
+            builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+            builder.Services.AddScoped<UsuarioService>();
+
+            builder.Services.AddAuthorization();
+
+            builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+            builder.Services.AddControllers()
+                .AddJsonOptions(opt =>
+                {
+                    opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                });
+
+            builder.Services.AddHealthChecks()
+                .AddCheck<ApplicationHealthCheck>(
+                    "Application",
+                    failureStatus: HealthStatus.Degraded,
+                    tags: new[] { "application", "internal" }
+                )
+                .AddCheck<OracleHealthCheck>(
+                    "Oracle Database",
+                    failureStatus: HealthStatus.Unhealthy,
+                    tags: new[] { "database" }
+                );
+
+            var app = builder.Build();
+
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI(ui =>
+                {
+                    ui.SwaggerEndpoint("/swagger/v1/swagger.json", "Health-Hub.API v1");
+                });
             }
 
-            var created = await _svc.Criar(dto);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-        }
+            app.UseHttpsRedirection();
+            app.UseRouting();
 
-        [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [SwaggerOperation(
-            Summary = "Atualiza um usuário existente",
-            Description = "Atualiza os detalhes de um usuário específico."
-        )]
-        public async Task<IActionResult> Update(int id, [FromBody] UsuarioRequest dto)
-        {
-            if (!ModelState.IsValid)
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.MapControllers();
+
+            app.MapHealthChecks("/health", new HealthCheckOptions()
             {
-                return BadRequest(ModelState);
-            }
+                ResponseWriter = HealthCheckExtensions.WriteResponse,
+                Predicate = check => check.Tags.Contains("application") ||
+                                     check.Tags.Contains("database") ||
+                                     check.Tags.Contains("external")
+            });
 
-            var updated = await _svc.Atualizar(id, dto);
-            if (!updated) return NotFound();
+            app.MapHealthChecks("/health/ready", new HealthCheckOptions()
+            {
+                ResponseWriter = HealthCheckExtensions.WriteResponse,
+                Predicate = check => check.Tags.Contains("database") ||
+                                     check.Tags.Contains("external")
+            });
 
-            return NoContent();
-        }
+            app.MapHealthChecks("/health/live", new HealthCheckOptions()
+            {
+                ResponseWriter = HealthCheckExtensions.WriteResponse,
+                Predicate = check => check.Tags.Contains("application")
+            });
 
-        [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [SwaggerOperation(
-            Summary = "Remove um usuário",
-            Description = "Remove um usuário específico do sistema."
-        )]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var deleted = await _svc.Remover(id);
-            if (!deleted) return NotFound();
-
-            return NoContent();
+            app.Run();
         }
     }
 }
