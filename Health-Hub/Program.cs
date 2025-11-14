@@ -1,4 +1,3 @@
-﻿
 using Health_Hub.Application.Mapping;
 using Health_Hub.Application.Services;
 using Health_Hub.Domain.IRepositories;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MottuFind_C_.Infrastructure.HealthChecks;
-using Asp.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Health_Hub
@@ -26,26 +24,14 @@ namespace Health_Hub
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
-
                 c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
                 {
                     Title = "Health-Hub.API",
                     Version = "v1",
-                    Description = "Documentação da versão 1 da API."
+                    Description = "Documentação da API."
                 });
-
-                c.SwaggerDoc("v2", new Microsoft.OpenApi.Models.OpenApiInfo
-                {
-                    Title = "Health-Hub.API",
-                    Version = "v2",
-                    Description = "Documentação da versão 2 da API."
-                });
-
                 c.EnableAnnotations();
-
-
             });
-
 
             builder.Services.AddDbContext<AppDbContext>(options =>
             {
@@ -55,7 +41,6 @@ namespace Health_Hub
 
                 options.UseOracle(connectionString);
             });
-
 
             builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
             builder.Services.AddScoped<UsuarioService>();
@@ -69,20 +54,6 @@ namespace Health_Hub
                 {
                     opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 });
-
-
-            builder.Services.AddApiVersioning(options =>
-            {
-                options.DefaultApiVersion = new ApiVersion(1, 0);
-                options.AssumeDefaultVersionWhenUnspecified = true;
-                options.ReportApiVersions = true;
-            })
-            .AddApiExplorer(options =>
-            {
-                options.GroupNameFormat = "'v'VVV";
-                options.SubstituteApiVersionInUrl = true;
-            });
-
 
             builder.Services.AddHealthChecks()
                 .AddCheck<ApplicationHealthCheck>(
@@ -98,14 +69,12 @@ namespace Health_Hub
 
             var app = builder.Build();
 
-
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI(ui =>
                 {
                     ui.SwaggerEndpoint("/swagger/v1/swagger.json", "Health-Hub.API v1");
-                    ui.SwaggerEndpoint("/swagger/v2/swagger.json", "Health-Hub.API v2");
                 });
             }
 
@@ -116,7 +85,6 @@ namespace Health_Hub
             app.UseAuthorization();
 
             app.MapControllers();
-
 
             app.MapHealthChecks("/health", new HealthCheckOptions()
             {
